@@ -1,0 +1,16 @@
+name: Lint and test
+on: [push]
+jobs:
+  linting-and-testing:
+    name: Run tests and linting
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Run tests
+        run: |
+          python manage.py migrate && python manage.py test
+      - name: Run linting
+        run: |
+          flake8
+        
