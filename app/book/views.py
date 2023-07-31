@@ -2,7 +2,8 @@ from rest_framework import (
     viewsets,
     permissions,
     authentication,
-    status
+    status,
+    mixins
 )
 from rest_framework.response import Response
 from book.serializers import (
@@ -14,7 +15,8 @@ from book.serializers import (
 from book.permissions import IsOwnerOrReadOnly, EveryoneCanAddReview
 from core.models import (
     Book,
-    Publisher
+    Publisher,
+    Review
 )
 
 from rest_framework.decorators import action
@@ -38,12 +40,11 @@ class BookApiView(viewsets.ModelViewSet):
         elif self.action == 'retrieve':
             return BookSerializerOnlyView
         elif self.action == 'review_manage':
-            permissions_obj = self.get_permissions()
-            print(permissions_obj)
             return ReviewSerializer
         return BookSerializer
 
-    @action(['GET', 'POST'], detail=True, url_path='review-manage', permission_classes=[EveryoneCanAddReview])
+    @action(['GET', 'POST'], detail=True, url_path='review-manage', permission_classes=[
+        permissions.IsAuthenticated, EveryoneCanAddReview], authentication_classes=[authentication.TokenAuthentication])
     def review_manage(self, request, pk=None):
         book = self.get_object()
         if request.method == 'GET':
@@ -79,3 +80,13 @@ class PublisherApiView(viewsets.ModelViewSet):
             if not created:
                 return Response({'message': 'Duplicated objec'}, status=404)
             return Response(data, status=201)
+
+
+class ReviewApiView(mixins.DestroyModelMixin, viewsets.GenericViewSet):
+    serializer_class = ReviewSerializer
+    queryset = Review.objects.all()
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = [authentication.TokenAuthentication]
+
+    def get_queryset(self):
+        return self.queryset.filter(user=self.request.user)

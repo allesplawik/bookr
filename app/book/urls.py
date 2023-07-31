@@ -4,13 +4,15 @@ from django.urls import path, include
 
 from book.views import (
     BookApiView,
-    PublisherApiView
+    PublisherApiView,
+    ReviewApiView
 )
 
 
 router = DefaultRouter()
 router.register('books', BookApiView)
 router.register('publishers', PublisherApiView)
+router.register('reviews', ReviewApiView)
 
 app_name = 'book'
 

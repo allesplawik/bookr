@@ -68,6 +68,17 @@ class PublicBookApiTest(TestCase):
         res = self.client.get(BOOK_URL)
         self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_review_delete_unauthorized(self):
+        other_user = create_user(
+            email='other@example.com'
+        )
+
+        review = create_review(user=other_user)
+        url = reverse('book:review-detail', args=(review.id,))
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
 
 class PrivateBookApiTest(TestCase):
     def setUp(self) -> None:
@@ -456,3 +467,20 @@ class PublisherApiView(TestCase):
         reviews = Review.objects.filter(user=self.user)
         review = reviews[0]
         self.assertIn(review, book.reviews.all())
+
+    def test_delete_only_owned_reviews(self):
+        review = create_review(user=self.user)
+        url = reverse('book:review-detail', args=(review.id,))
+
+        res = self.client.delete(url)
+
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_delete_not_owned_error(self):
+        other_user = create_user(
+            email='other@example.com'
+        )
+        review = create_review(user=other_user)
+        url = reverse('book:review-detail', args=(review.id,))
+        res = self.client.delete(url)
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
