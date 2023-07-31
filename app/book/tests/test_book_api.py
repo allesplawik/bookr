@@ -3,13 +3,14 @@ from django.test import TestCase
 from django.urls import reverse
 from rest_framework.test import APIClient
 from book.serializers import (
-    BookSerializer,
-    PublisherSerializer
+    PublisherSerializer,
+    BookSerializerOnlyView
 )
 from rest_framework import status
 from core.models import (
     Book,
-    Publisher
+    Publisher,
+    Review
 )
 
 import pendulum
@@ -37,7 +38,22 @@ def create_user(**params):
     return get_user_model().objects.create_user(**defaults)
 
 
+def create_review(user, **params):
+    defaults = {
+        'title': 'First review',
+        'content': 'The best book',
+        'rating': 10
+    }
+
+    defaults.update(params)
+    return Review.objects.create(user=user, **defaults)
+
+
 BOOK_URL = reverse('book:book-list')
+
+
+def review_detail_url(book_id):
+    return reverse('book:book-review-manage', args=(book_id,))
 
 
 def detail_url(book_id):
@@ -77,7 +93,7 @@ class PrivateBookApiTest(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         books = Book.objects.all().order_by('-id')
-        serializer = BookSerializer(books, many=True)
+        serializer = BookSerializerOnlyView(books, many=True)
 
         self.assertEqual(serializer.data, res.data)
 
@@ -414,3 +430,29 @@ class PublisherApiView(TestCase):
 
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(book.publishers.count(), 0)
+
+    def test_get_book_reviews(self):
+        book = book_create(user=self.user)
+        review = create_review(user=self.user)
+        book.reviews.add(review)
+        url = review_detail_url(book.id)
+
+        res = self.client.get(url)
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_create_review(self):
+        book = book_create(user=self.user)
+        payload = {
+            'title': 'First review',
+            'content': "The best book I've ever read.",
+            'rating': 10
+        }
+        url = review_detail_url(book.id)
+        res = self.client.post(url, payload, format='json')
+
+        self.assertEqual(res.status_code, status.HTTP_201_CREATED)
+        book.refresh_from_db()
+        reviews = Review.objects.filter(user=self.user)
+        review = reviews[0]
+        self.assertIn(review, book.reviews.all())

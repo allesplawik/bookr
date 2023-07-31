@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from core.models import Book, Publisher
+from core.models import Book, Publisher, Review
 
 
 class PublisherSerializer(serializers.ModelSerializer):
@@ -19,6 +19,13 @@ class PublisherSerializer(serializers.ModelSerializer):
         publisher = super().update(instance, validated_data)
 
         return publisher
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Review
+        fields = ['id', 'title', 'content', 'rating']
+        read_only_fields = ['id']
 
 
 class BookSerializer(serializers.ModelSerializer):
@@ -58,3 +65,10 @@ class BookSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class BookSerializerOnlyView(BookSerializer):
+    reviews = ReviewSerializer(many=True, required=False)
+
+    class Meta(BookSerializer.Meta):
+        fields = BookSerializer.Meta.fields + ['reviews']

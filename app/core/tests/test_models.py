@@ -3,7 +3,8 @@
 from django.contrib.auth import get_user_model
 from core.models import (
     Book,
-    Publisher
+    Publisher,
+    Review
 )
 from django.test import TestCase
 
@@ -16,6 +17,16 @@ def create_user(**params):
     }
     defaults.update(params)
     return get_user_model().objects.create_user(**defaults)
+
+
+def create_book(user, **params):
+    defaults = {
+        'title': 'Book',
+        'publication_date': '2023-01-01',
+        'isbn': '123123123'
+    }
+    defaults.update(params)
+    return Book.objects.create(user=user, **defaults)
 
 
 class UserModelTest(TestCase):
@@ -125,3 +136,21 @@ class PublisherTest(TestCase):
         publisher = create_publisher(user=self.user)
         self.assertEqual(str(publisher), publisher.name)
         self.assertEqual(publisher.user, self.user)
+
+
+class ReviewTest(TestCase):
+    def setUp(self) -> None:
+        self.user = create_user()
+
+    def test_create_review(self):
+        book = create_book(user=self.user)
+        review = Review.objects.create(
+            title='Test first review',
+            content='The best book',
+            rating=5,
+            user=self.user)
+
+        book.reviews.add(review)
+
+        self.assertIn(review, book.reviews.all())
+        self.assertEqual(str(review), review.title)
